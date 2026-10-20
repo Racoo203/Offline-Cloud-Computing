@@ -9,8 +9,8 @@ Flujo de trabajo de aprendizaje federado simulado: la base de datos MNIST se div
 ```
 ├── CaffeLeNet.py            # Modelo global (arquitectura LeNet del ejemplo de MNIST de Caffe)
 ├── local_training.ipynb     # Entrenamiento local: training loop + evaluación
-├── global_training.ipynb    # Cómputo del modelo global (FedAvg) y comparación
-├── models/                  # Modelos locales (lmodel_k.keras + n_k en lmodel_k.json) y global
+├── global_training.ipynb    # Cómputo del modelo global (FedAvg, matched averaging, FedAdam) y comparación
+├── models/                  # Modelos locales (lmodel_k, lmodel_indep_k; n_k en .json) y globales (global_*)
 ├── reports/                 # Classification reports (.txt) y resumen de resultados (resultados.csv)
 ├── viz/                     # Curvas de aprendizaje de cada modelo local
 ├── requirements.txt
@@ -58,22 +58,28 @@ En ambas pruebas no hay evidencia de diferencias entre clientes.
 
 Cada cliente entrena el modelo durante 5 épocas con su partición, reservando el 10% de sus datos (estratificado) como validación local para las curvas de aprendizaje. Al terminar se evalúa sobre el conjunto de prueba de MNIST (10,000 imágenes) y se guardan el modelo, su número de ejemplos de entrenamiento $n_k$, el *classification report* y las curvas de aprendizaje.
 
-Todos los clientes parten del mismo modelo inicial $w_0$ (`SHARED_INIT = True`), como si el servidor lo distribuyera antes del entrenamiento, que es la condición de la que parte FedAvg (McMahan et al., 2017).
+Se entrenan dos conjuntos de modelos locales:
+- `lmodel_k`: todos los clientes parten del mismo modelo inicial $w_0$, como si el servidor lo distribuyera antes del entrenamiento, que es la condición de la que parte FedAvg (McMahan et al., 2017).
+- `lmodel_indep_k`: cada cliente parte de una inicialización aleatoria propia, sin coordinación con el servidor.
 
 ### 3. Modelo global (`global_training.ipynb`)
 
-El servidor carga los modelos locales, verifica que tengan la arquitectura del modelo global y los combina con **FedAvg** (McMahan et al., 2017), que promedia los pesos ponderando cada modelo local por su número de ejemplos:
+El servidor carga los modelos locales, verifica que tengan la arquitectura del modelo global y compara tres formas de computar el modelo global, cada una en las condiciones para las que fue diseñada y con el mismo presupuesto de 5 épocas de entrenamiento local por cliente:
 
-$$w_{\text{global}} = \sum_{k=1}^{K} \frac{n_k}{n}\, w_k, \qquad n = \sum_{k=1}^{K} n_k.$$
+| Método | Idea | Escenario de comparación |
+|---|---|---|
+| **FedAvg** (McMahan et al., 2017) | Promedio de los pesos ponderado por el número de ejemplos: $w = \sum_k \frac{n_k}{n} w_k$. | Línea base en todos los escenarios. |
+| **Matched averaging** (Wang et al., 2020; Ainsworth et al., 2023) | Antes de promediar, permuta las neuronas ocultas de cada modelo local para alinearlas con un modelo de referencia (algoritmo húngaro, capa por capa). La permutación no cambia la función de cada modelo. | Una ronda, modelos con inicialización independiente; control con $w_0$ compartido. |
+| **FedAdam** (Reddi et al., 2021) | En cada ronda, el servidor trata el cambio promedio de los pesos como un pseudo-gradiente y le aplica Adam (momentum y paso adaptativo por parámetro). | 5 rondas de una época local, $w_0$ compartido, contra FedAvg con las mismas rondas; 3 semillas. La tasa de aprendizaje del servidor se elige con validación federada, sin usar el conjunto de prueba. |
 
-El modelo global se compara con los modelos locales y con un modelo centralizado (el mismo modelo entrenado con los 60,000 ejemplos en un solo dispositivo), que sirve como cota superior de referencia.
+Los modelos globales se comparan también con los modelos locales y con un modelo centralizado (el mismo modelo entrenado con los 60,000 ejemplos en un solo dispositivo), que sirve como cota superior de referencia.
 
 ## Cómo reproducir
 
 1. Crear un entorno con Python 3.12 e instalar las dependencias: `pip install -r requirements.txt`.
 2. Colocar la partición propia en `private/data/client_{k}.npz` (arreglos `x`: imágenes uint8 de 28×28, `y`: etiquetas).
 3. Ejecutar `local_training.ipynb` (*Restart & Run All*). Cada integrante usa `CLIENT_IDS = [k]`; para simular el flujo completo, `CLIENT_IDS = [0, 1, 2, 3]`.
-4. Ejecutar `global_training.ipynb` una vez que `models/` contenga los cuatro modelos locales.
+4. Ejecutar `global_training.ipynb` una vez que `models/` contenga los dos conjuntos de modelos locales. La sección de FedAdam simula las rondas de comunicación y necesita las particiones de `private/data/`.
 
 ## Resultados
 
@@ -81,6 +87,9 @@ El modelo global se compara con los modelos locales y con un modelo centralizado
 
 ## Referencias
 
+- Ainsworth, S. K., Hayase, J., & Srinivasa, S. (2023). Git Re-Basin: Merging models modulo permutation symmetries. *International Conference on Learning Representations (ICLR 2023)*.
 - Jia, Y., Shelhamer, E., Donahue, J., Karayev, S., Long, J., Girshick, R., Guadarrama, S., & Darrell, T. (2014). Caffe: Convolutional architecture for fast feature embedding. *Proceedings of the 22nd ACM International Conference on Multimedia*.
 - LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning applied to document recognition. *Proceedings of the IEEE, 86*(11), 2278–2324.
 - McMahan, B., Moore, E., Ramage, D., Hampson, S., & Agüera y Arcas, B. (2017). Communication-efficient learning of deep networks from decentralized data. *Proceedings of AISTATS 2017*.
+- Reddi, S., Charles, Z., Zaheer, M., Garrett, Z., Rush, K., Konečný, J., Kumar, S., & McMahan, H. B. (2021). Adaptive federated optimization. *International Conference on Learning Representations (ICLR 2021)*.
+- Wang, H., Yurochkin, M., Sun, Y., Papailiopoulos, D., & Khazaeni, Y. (2020). Federated learning with matched averaging. *International Conference on Learning Representations (ICLR 2020)*.
