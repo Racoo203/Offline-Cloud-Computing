@@ -2,7 +2,10 @@
 
 Flujo de trabajo de aprendizaje federado simulado: la base de datos MNIST se divide entre los cuatro integrantes del equipo, cada integrante entrena localmente el mismo modelo con su partición, y un servidor combina los modelos locales en un modelo global.
 
-<!-- TODO: integrantes del equipo (nombre y matrícula) -->
+- Raúl Correa Ocañas, A01722401
+- Ricardo Kaleb Flores Alfonso, A01198716
+- Sebastián Miramontes Soto, A01285296
+- Alberto Rodríguez Reyes, A01383805
 
 ## Estructura del repositorio
 
