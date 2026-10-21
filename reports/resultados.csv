@@ -1,8 +1,10 @@
-modelo,exactitud
-lmodel_0,0.9813
-lmodel_1,0.9746
-lmodel_2,0.9823
-lmodel_3,0.9791
-promedio_modelos_locales,0.9793
-global_fedavg,0.9841
-centralizado,0.9878
+escenario,metodo,exactitud_media,desv_est,n_semillas
+w0 compartido, 1 ronda,promedio de modelos locales,0.9793,,1
+w0 compartido, 1 ronda,FedAvg,0.9841,,1
+w0 compartido, 1 ronda,Matched averaging (control),0.9841,,1
+inicialización independiente, 1 ronda,promedio de modelos locales,0.9783,,1
+inicialización independiente, 1 ronda,FedAvg,0.5758,,1
+inicialización independiente, 1 ronda,Matched averaging,0.8814,,1
+w0 compartido, 5 rondas,FedAvg,0.9858,0.0005,3
+w0 compartido, 5 rondas,FedAdam (eta = 0.01),0.9793,0.0007,3
+datos centralizados,modelo centralizado,0.9878,,1
